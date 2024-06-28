@@ -1,0 +1,36 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Compiled Python Files
+*.pyc
+
+# Backup/Temp/IDE Files
+.idea
+.#*
+#*.*
+*.*#
+*.*~
+
+.dir-locals.el
+.cpcache/
+.nrepl-port
+bin/
+lib/
+pyvenv.cfg
+README.md
+extract.py
+metaplan.org
+testplan.org
+testris.py
+
