@@ -28,7 +28,6 @@
 bin/
 lib/
 pyvenv.cfg
-README.md
 extract.py
 metaplan.org
 testplan.org
