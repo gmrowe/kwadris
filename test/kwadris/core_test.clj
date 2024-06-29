@@ -1,6 +1,6 @@
-(ns learntris.core-test
+(ns kwadris.core-test
   (:require [clojure.test :refer [is testing deftest]]
-            [learntris.core :as c]))
+            [kwadris.core :as c]))
 
 (deftest t
   (testing "The initial matrix is 10 (wide) x 22 (deep)"

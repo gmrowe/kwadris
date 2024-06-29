@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+bb -x kwadris.core/run "$@"

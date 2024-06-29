@@ -25,11 +25,8 @@
 .dir-locals.el
 .cpcache/
 .nrepl-port
+.venv/
 bin/
 lib/
-pyvenv.cfg
-extract.py
-metaplan.org
-testplan.org
+learntris
 testris.py
-

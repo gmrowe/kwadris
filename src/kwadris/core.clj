@@ -1,4 +1,4 @@
-(ns learntris.core
+(ns kwadris.core
   (:require [clojure.string :as str]
             [clojure.java.io :as io]))
 
