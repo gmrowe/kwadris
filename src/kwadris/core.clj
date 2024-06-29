@@ -1,6 +1,5 @@
 (ns kwadris.core
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io]))
+  (:require [clojure.string :as str]))
 
 (def width 10)
 
@@ -165,8 +164,5 @@
         (recur (-> state
                    (assoc :input-buffer (str/split input #"\s+"))
                    (assoc :input-pointer 0)))))))
-
-(comment
-  (let [phony "1 2 3 ?4\n"] (str/split phony #"\s+")))
 
 (defn run [_opts] (game-loop))
