@@ -10,13 +10,7 @@
 
 (def init-state {:cells empty-cells, :score 0, :lines-cleared 0})
 
-(def input (atom (line-seq (io/reader *in*))))
-
-(defn consume-line!
-  []
-  (let [line (first @input)]
-    (swap! input next)
-    line))
+(defn read-input-line [] (read-line))
 
 (defn matrix-as-str
   [state]
@@ -36,11 +30,15 @@
                 (remove #(Character/isWhitespace %))
                 (into []))))
 
-(defn print-score [state] (printf "%d%n" (:score state)) state)
+(defn print-score [state] (printf "%d%n" (:score state)) (flush) state)
 
 (defn clear-state [state] (assoc state :cells empty-cells))
 
-(defn print-lines-cleared [state] (printf "%d%n" (:lines-cleared state)) state)
+(defn print-lines-cleared
+  [state]
+  (printf "%d%n" (:lines-cleared state))
+  (flush)
+  state)
 
 (defn complete?
   [cells line-index]
@@ -65,7 +63,8 @@
 
 (defn print-active-tetramino
   [state]
-  (println (active-tetramino-as-str (:active-tetramino state))))
+  (println (active-tetramino-as-str (:active-tetramino state)))
+  state)
 
 (defn step
   [state]
@@ -80,19 +79,21 @@
   [state command]
   (case command
     "p" (print-state state)
-    "g" (given-state state (repeatedly height consume-line!))
+    "g" (given-state state (repeatedly height read-input-line))
     "c" (clear-state state)
     "?s" (print-score state)
     "?n" (print-lines-cleared state)
     "s" (step state)
     ("I" "O") (set-active-tetranimo state command)
     "t" (print-active-tetramino state)
-    (binding [*out* *err*] (printf "[Error] Unknown command: %s" command))))
+    (do (binding [*out* *err*] (printf "[Error] Unknown command: %s%n" command))
+        (flush)
+        state)))
 
 (defn game-loop
   []
   (loop [state init-state]
-    (when-let [line (consume-line!)]
+    (when-let [line (read-input-line)]
       (recur (execute-command state (str/trim line))))))
 
 (defn run [_opts] (game-loop))
