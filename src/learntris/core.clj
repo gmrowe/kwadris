@@ -57,6 +57,15 @@
   [cells line-index]
   (splice-vec cells (repeat width \.) (* width line-index)))
 
+(defn set-active-tetranimo [state type] (assoc state :active-tetramino type))
+
+(def active-tetramino-as-str
+  {"I" (str/join \newline [". . . ." "c c c c" ". . . ." ". . . ."]),
+   "O" (str/join \newline ["y y" "y y"])})
+
+(defn print-active-tetramino
+  [state]
+  (println (active-tetramino-as-str (:active-tetramino state))))
 
 (defn step
   [state]
@@ -76,6 +85,8 @@
     "?s" (print-score state)
     "?n" (print-lines-cleared state)
     "s" (step state)
+    ("I" "O") (set-active-tetranimo state command)
+    "t" (print-active-tetramino state)
     (binding [*out* *err*] (printf "[Error] Unknown command: %s" command))))
 
 (defn game-loop
