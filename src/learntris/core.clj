@@ -8,7 +8,12 @@
 
 (def empty-cells (into [] (repeat (* width height) \.)))
 
-(def init-state {:cells empty-cells, :score 0, :lines-cleared 0})
+(def init-state
+  {:cells empty-cells,
+   :score 0,
+   :lines-cleared 0,
+   :input-pointer 0,
+   :input-buffer []})
 
 (defn read-input-line [] (read-line))
 
@@ -93,8 +98,17 @@
 (defn game-loop
   []
   (loop [state init-state]
-    (when-let [line (read-input-line)]
-      (recur (execute-command state (str/trim line))))))
+    (if (< (:input-pointer state) (count (:input-buffer state)))
+      (let [command (nth (:input-buffer state) (:input-pointer state))]
+        (recur (-> state
+                   (update :input-pointer inc)
+                   (execute-command command))))
+      (when-let [input (read-input-line)]
+        (recur (-> state
+                   (assoc :input-buffer (str/split input #"\s+"))
+                   (assoc :input-pointer 0)))))))
+
+(comment
+  (let [phony "1 2 3 ?4\n"] (str/split phony #"\s+")))
 
 (defn run [_opts] (game-loop))
-
