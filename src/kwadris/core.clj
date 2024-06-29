@@ -5,7 +5,7 @@
 
 (def height 22)
 
-(def empty-cells (into [] (repeat (* width height) \.)))
+(def empty-cells (vec (repeat (* width height) \.)))
 
 (def init-state
   {:cells empty-cells,
@@ -32,7 +32,7 @@
     :cells (->> matrix-repr
                 (str/join)
                 (remove #(Character/isWhitespace %))
-                (into []))))
+                (vec))))
 
 (defn print-score [state] (printf "%d%n" (:score state)) (flush) state)
 
