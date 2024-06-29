@@ -62,15 +62,70 @@
 
 (defn set-active-tetranimo [state type] (assoc state :active-tetramino type))
 
-(def active-tetramino-as-str
-  {"I" (str/join \newline [". . . ." "c c c c" ". . . ." ". . . ."]),
-   "O" (str/join \newline ["y y" "y y"]),
-   "Z" (str/join \newline ["r r ." ". r r" ". . ."])})
+(def tetramino-as-str
+  {"I" [". . . ." "c c c c" ". . . ." ". . . ."],
+   "I2" [". . c ." ". . c ." ". . c ." ". . c ."],
+   "I3" [". . . ." ". . . ." "c c c c" ". . . ."],
+   "I4" [". c . ." ". c . ." ". c . ." ". c . ."],
+   "O" ["y y" "y y"],
+   "Z" ["r r ." ". r r" ". . ."],
+   "Z2" [". . r" ". r r" ". r ."],
+   "Z3" [". . ." "r r ." ". r r"],
+   "Z4" [". r ." "r r ." "r . ."],
+   "S" [". g g" "g g ." ". . ."],
+   "S2" [". g ." ". g g" ". . g"],
+   "S3" [". . ." ". g g" "g g ."],
+   "S4" ["g . ." "g g ." ". g ."],
+   "J" ["b . ." "b b b" ". . ."],
+   "J2" [". b b" ". b ." ". b ."],
+   "J3" [". . ." "b b b" ". . b"],
+   "J4" [". b ." ". b ." "b b ."],
+   "L" [". . o" "o o o" ". . ."],
+   "L2" [". o ." ". o ." ". o o"],
+   "L3" [". . ." "o o o" "o . ."],
+   "L4" ["o o ." ". o ." ". o ."],
+   "T" [". m ." "m m m" ". . ."],
+   "T2" [". m ." ". m m" ". m ."],
+   "T3" [". . ." "m m m" ". m ."],
+   "T4" [". m ." "m m ." ". m ."]})
 
 (defn print-active-tetramino
   [state]
-  (println (active-tetramino-as-str (:active-tetramino state)))
+  (println (str/join \newline (tetramino-as-str (:active-tetramino state))))
   state)
+
+(def tetranamo-rotations
+  {"I" "I2",
+   "I2" "I3",
+   "I3" "I4",
+   "I4" "I",
+   "O" "O",
+   "Z" "Z2",
+   "Z2" "Z3",
+   "Z3" "Z4",
+   "Z4" "Z",
+   "S" "S2",
+   "S2" "S3",
+   "S3" "S4",
+   "S4" "S",
+   "J" "J2",
+   "J2" "J3",
+   "J3" "J4",
+   "J4" "J",
+   "L" "L2",
+   "L2" "L3",
+   "L3" "L4",
+   "L4" "L",
+   "T" "T2",
+   "T2" "T3",
+   "T3" "T4",
+   "T4" "T"})
+
+(defn rotate-active-tetranimo-clockwise
+  [state]
+  (update state :active-tetramino tetranamo-rotations))
+
+(defn print-newline [state] (println) state)
 
 (defn step
   [state]
@@ -90,7 +145,9 @@
     "?s" (print-score state)
     "?n" (print-lines-cleared state)
     "s" (step state)
-    ("I" "O" "Z") (set-active-tetranimo state command)
+    ";" (print-newline state)
+    ("I" "O" "Z" "S" "J" "L" "T") (set-active-tetranimo state command)
+    ")" (rotate-active-tetranimo-clockwise state)
     "t" (print-active-tetramino state)
     (do (binding [*out* *err*] (printf "[Error] Unknown command: %s%n" command))
         (flush)
