@@ -95,8 +95,6 @@
   (println (tetramino-as-str (:active-tetramino state)))
   state)
 
-(keyword "I")
-
 (def tetranamo-rotations
   {:I :I2,
    :I2 :I3,
