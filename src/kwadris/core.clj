@@ -153,18 +153,21 @@
     "t" (print-active-tetramino state)
     (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
 
+(defn next-command
+  [state]
+  (if (< (:input-pointer state) (count (:input-buffer state)))
+    [(nth (:input-buffer state) (:input-pointer state))
+     (update state :input-pointer inc)]
+    (when-let [input (read-input-line)]
+      (recur (-> state
+                 (assoc :input-buffer (str/split input #"\s+"))
+                 (assoc :input-pointer 0))))))
+
 (defn game-loop
   []
   (loop [state init-state]
-    (cond (:quit state) nil
-          (< (:input-pointer state) (count (:input-buffer state)))
-            (let [command (nth (:input-buffer state) (:input-pointer state))]
-              (recur (-> state
-                         (update :input-pointer inc)
-                         (execute-command command))))
-          :else (when-let [input (read-input-line)]
-                  (recur (-> state
-                             (assoc :input-buffer (str/split input #"\s+"))
-                             (assoc :input-pointer 0)))))))
+    (when-not (:quit state)
+      (when-let [[command state] (next-command state)]
+        (recur (execute-command state command))))))
 
 (defn run [_opts] (game-loop))
