@@ -16,33 +16,33 @@
 
 (defn read-input-line [] (read-line))
 
-(defn matrix-as-str
-  [state]
-  (->> state
-       (:cells)
+(defn matrix-repr
+  [cells]
+  (->> cells
        (partition width)
        (map #(str/join \space %))
-       (str/join \newline)))
+       vec))
 
-(defn print-state [state] (println (matrix-as-str state)) state)
+(defn print-state
+  [state]
+  (println (str/join \newline (matrix-repr (:cells state)))))
 
 (defn given-state
-  [state matrix-repr]
+  [state given-matrix]
   (assoc state
-    :cells (->> matrix-repr
+    :cells (->> given-matrix
                 (str/join)
                 (remove #(Character/isWhitespace %))
                 (vec))))
 
-(defn print-score [state] (printf "%d%n" (:score state)) (flush) state)
+(defn print-score [state] (printf "%d%n" (:score state)) (flush))
 
 (defn clear-state [state] (assoc state :cells empty-cells))
 
 (defn print-lines-cleared
   [state]
   (printf "%d%n" (:lines-cleared state))
-  (flush)
-  state)
+  (flush))
 
 (defn complete?
   [cells line-index]
@@ -59,41 +59,46 @@
   [cells line-index]
   (splice-vec cells (repeat width \.) (* width line-index)))
 
-(defn set-active-tetranimo [state type] (assoc state :active-tetramino type))
+(defn set-active-tetranimo
+  [state type]
+  (-> state
+      (assoc :active-tetramino type)
+      (assoc :active-tetramino-row 0)
+      (assoc :active-tetramino-col 4)))
 
 (def tetramino-repr
-  {:I [". . . ." "c c c c" ". . . ." ". . . ."],
-   :I2 [". . c ." ". . c ." ". . c ." ". . c ."],
-   :I3 [". . . ." ". . . ." "c c c c" ". . . ."],
-   :I4 [". c . ." ". c . ." ". c . ." ". c . ."],
-   :O ["y y" "y y"],
-   :Z ["r r ." ". r r" ". . ."],
-   :Z2 [". . r" ". r r" ". r ."],
-   :Z3 [". . ." "r r ." ". r r"],
-   :Z4 [". r ." "r r ." "r . ."],
-   :S [". g g" "g g ." ". . ."],
-   :S2 [". g ." ". g g" ". . g"],
-   :S3 [". . ." ". g g" "g g ."],
-   :S4 ["g . ." "g g ." ". g ."],
-   :J ["b . ." "b b b" ". . ."],
-   :J2 [". b b" ". b ." ". b ."],
-   :J3 [". . ." "b b b" ". . b"],
-   :J4 [". b ." ". b ." "b b ."],
-   :L [". . o" "o o o" ". . ."],
-   :L2 [". o ." ". o ." ". o o"],
-   :L3 [". . ." "o o o" "o . ."],
-   :L4 ["o o ." ". o ." ". o ."],
-   :T [". m ." "m m m" ". . ."],
-   :T2 [". m ." ". m m" ". m ."],
-   :T3 [". . ." "m m m" ". m ."],
-   :T4 [". m ." "m m ." ". m ."]})
+  {:L4 [[\o \o \.] [\. \o \.] [\. \o \.]],
+   :S4 [[\g \. \.] [\g \g \.] [\. \g \.]],
+   :Z2 [[\. \. \r] [\. \r \r] [\. \r \.]],
+   :L [[\. \. \o] [\o \o \o] [\. \. \.]],
+   :I [[\. \. \. \.] [\c \c \c \c] [\. \. \. \.] [\. \. \. \.]],
+   :I4 [[\. \c \. \.] [\. \c \. \.] [\. \c \. \.] [\. \c \. \.]],
+   :O [[\y \y] [\y \y]],
+   :S2 [[\. \g \.] [\. \g \g] [\. \. \g]],
+   :Z3 [[\. \. \.] [\r \r \.] [\. \r \r]],
+   :J [[\b \. \.] [\b \b \b] [\. \. \.]],
+   :Z [[\r \r \.] [\. \r \r] [\. \. \.]],
+   :J2 [[\. \b \b] [\. \b \.] [\. \b \.]],
+   :I3 [[\. \. \. \.] [\. \. \. \.] [\c \c \c \c] [\. \. \. \.]],
+   :T [[\. \m \.] [\m \m \m] [\. \. \.]],
+   :L3 [[\. \. \.] [\o \o \o] [\o \. \.]],
+   :T4 [[\. \m \.] [\m \m \.] [\. \m \.]],
+   :J3 [[\. \. \.] [\b \b \b] [\. \. \b]],
+   :T2 [[\. \m \.] [\. \m \m] [\. \m \.]],
+   :L2 [[\. \o \.] [\. \o \.] [\. \o \o]],
+   :J4 [[\. \b \.] [\. \b \.] [\b \b \.]],
+   :T3 [[\. \. \.] [\m \m \m] [\. \m \.]],
+   :I2 [[\. \. \c \.] [\. \. \c \.] [\. \. \c \.] [\. \. \c \.]],
+   :S3 [[\. \. \.] [\. \g \g] [\g \g \.]],
+   :S [[\. \g \g] [\g \g \.] [\. \. \.]],
+   :Z4 [[\. \r \.] [\r \r \.] [\r \. \.]]})
 
-(defn tetramino-as-str [id] (str/join \newline (tetramino-repr id)))
 
-(defn print-active-tetramino
-  [state]
-  (println (tetramino-as-str (:active-tetramino state)))
-  state)
+(defn tetramino-as-str
+  [id]
+  (->> (tetramino-repr id)
+       (map #(str/join \space %))
+       (str/join \newline)))
 
 (def tetranamo-rotations
   {:I :I2,
@@ -126,7 +131,10 @@
   [state]
   (update state :active-tetramino tetranamo-rotations))
 
-(defn print-newline [state] (println) state)
+(defn print-active-tetramino
+  [state]
+  (println (tetramino-as-str (:active-tetramino state))))
+
 
 (defn step
   [state]
@@ -143,16 +151,16 @@
   [state command]
   (case command
     "q" (quit state)
-    "p" (print-state state)
+    "p" (do (print-state state) state)
     "g" (given-state state (repeatedly height read-input-line))
     "c" (clear-state state)
-    "?s" (print-score state)
-    "?n" (print-lines-cleared state)
+    "?s" (do (print-score state) state)
+    "?n" (do (print-lines-cleared state) state)
     "s" (step state)
-    ";" (print-newline state)
+    ";" (do (println) state)
     ("I" "O" "Z" "S" "J" "L" "T") (set-active-tetranimo state (keyword command))
     ")" (rotate-active-tetranimo-clockwise state)
-    "t" (print-active-tetramino state)
+    "t" (do (print-active-tetramino state) state)
     (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
 
 (defn next-command
