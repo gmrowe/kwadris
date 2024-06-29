@@ -64,7 +64,8 @@
 
 (def active-tetramino-as-str
   {"I" (str/join \newline [". . . ." "c c c c" ". . . ." ". . . ."]),
-   "O" (str/join \newline ["y y" "y y"])})
+   "O" (str/join \newline ["y y" "y y"]),
+   "Z" (str/join \newline ["r r ." ". r r" ". . ."])})
 
 (defn print-active-tetramino
   [state]
@@ -89,7 +90,7 @@
     "?s" (print-score state)
     "?n" (print-lines-cleared state)
     "s" (step state)
-    ("I" "O") (set-active-tetranimo state command)
+    ("I" "O" "Z") (set-active-tetranimo state command)
     "t" (print-active-tetramino state)
     (do (binding [*out* *err*] (printf "[Error] Unknown command: %s%n" command))
         (flush)
