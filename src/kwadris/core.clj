@@ -135,9 +135,12 @@
         (update :lines-cleared + (count complete-line-indexes))
         (update :score + (* 100 (count complete-line-indexes))))))
 
+(defn quit [state] (assoc state :quit true))
+
 (defn execute-command
   [state command]
   (case command
+    "q" (quit state)
     "p" (print-state state)
     "g" (given-state state (repeatedly height read-input-line))
     "c" (clear-state state)
@@ -148,21 +151,20 @@
     ("I" "O" "Z" "S" "J" "L" "T") (set-active-tetranimo state command)
     ")" (rotate-active-tetranimo-clockwise state)
     "t" (print-active-tetramino state)
-    (do (binding [*out* *err*] (printf "[Error] Unknown command: %s%n" command))
-        (flush)
-        state)))
+    (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
 
 (defn game-loop
   []
   (loop [state init-state]
-    (if (< (:input-pointer state) (count (:input-buffer state)))
-      (let [command (nth (:input-buffer state) (:input-pointer state))]
-        (recur (-> state
-                   (update :input-pointer inc)
-                   (execute-command command))))
-      (when-let [input (read-input-line)]
-        (recur (-> state
-                   (assoc :input-buffer (str/split input #"\s+"))
-                   (assoc :input-pointer 0)))))))
+    (cond (:quit state) nil
+          (< (:input-pointer state) (count (:input-buffer state)))
+            (let [command (nth (:input-buffer state) (:input-pointer state))]
+              (recur (-> state
+                         (update :input-pointer inc)
+                         (execute-command command))))
+          :else (when-let [input (read-input-line)]
+                  (recur (-> state
+                             (assoc :input-buffer (str/split input #"\s+"))
+                             (assoc :input-pointer 0)))))))
 
 (defn run [_opts] (game-loop))
