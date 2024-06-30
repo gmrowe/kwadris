@@ -59,12 +59,16 @@
   [cells line-index]
   (splice-vec cells (repeat width \.) (* width line-index)))
 
+(defn tetramino-spawn-col [id] (if (= id :O) 4 3))
+
+#_(def tetramino-spawn-col {:O 4, :L 3, :J 3, :Z 3, :S 3, :I 3, :T 3})
+
 (defn set-active-tetranimo
-  [state type]
+  [state id]
   (-> state
-      (assoc :active-tetramino type)
+      (assoc :active-tetramino id)
       (assoc :active-tetramino-row 0)
-      (assoc :active-tetramino-col 4)))
+      (assoc :active-tetramino-col (tetramino-spawn-col id))))
 
 (def tetramino-repr
   {:L4 [[\o \o \.] [\. \o \.] [\. \o \.]],
@@ -135,6 +139,26 @@
   [state]
   (println (tetramino-as-str (:active-tetramino state))))
 
+(defn cells-with-active-tetramino
+  [state]
+  (let [cells (:cells state)
+        tetr (-> state
+                 :active-tetramino
+                 tetramino-repr)]
+    (reduce (fn [cs tetr-row]
+              (splice-vec cs
+                          (map #(Character/toUpperCase %) (nth tetr tetr-row))
+                          (+ (:active-tetramino-col state)
+                             (* width
+                                (+ tetr-row (:active-tetramino-row state))))))
+      cells
+      (range (count tetr)))))
+
+(defn print-state-with-active-tetramino
+  [state]
+  (println (str/join \newline
+                     (matrix-repr (cells-with-active-tetramino state)))))
+
 
 (defn step
   [state]
@@ -161,7 +185,20 @@
     ("I" "O" "Z" "S" "J" "L" "T") (set-active-tetranimo state (keyword command))
     ")" (rotate-active-tetranimo-clockwise state)
     "t" (do (print-active-tetramino state) state)
+    "P" (do (print-state-with-active-tetramino state) state)
     (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
+
+
+(defn parse-command-list
+  [s]
+  (loop [s s
+         commands []]
+    (if (seq s)
+      (cond (Character/isWhitespace (first s)) (recur (next s) commands)
+            (= \? (first s)) (recur (drop 2 s)
+                                    (conj commands (str/join (take 2 s))))
+            :else (recur (next s) (conj commands (str (first s)))))
+      commands)))
 
 (defn next-command
   [state]
@@ -170,7 +207,7 @@
      (update state :input-pointer inc)]
     (when-let [input (read-input-line)]
       (recur (-> state
-                 (assoc :input-buffer (str/split input #"\s+"))
+                 (assoc :input-buffer (parse-command-list input))
                  (assoc :input-pointer 0))))))
 
 (defn game-loop
