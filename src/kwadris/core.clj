@@ -51,7 +51,10 @@
 
 (defn splice-vec
   [v new-elements start-index]
-  (reduce (fn [v0 [i e]] (assoc v0 (+ i start-index) e))
+  (reduce (fn [v0 [i e]]
+            (if (< (+ i start-index) (count v0))
+              (assoc v0 (+ i start-index) e)
+              v0))
     v
     (map-indexed vector new-elements)))
 
@@ -60,8 +63,6 @@
   (splice-vec cells (repeat width \.) (* width line-index)))
 
 (defn tetramino-spawn-col [id] (if (= id :O) 4 3))
-
-#_(def tetramino-spawn-col {:O 4, :L 3, :J 3, :Z 3, :S 3, :I 3, :T 3})
 
 (defn set-active-tetranimo
   [state id]
@@ -135,10 +136,15 @@
   [state]
   (update state :active-tetramino tetranamo-rotations))
 
+(defn rotate-active-tetranimo-counterclockwise
+  [state]
+  (nth (iterate #(update % :active-tetramino tetranamo-rotations) state) 3))
+
 (defn print-active-tetramino
   [state]
   (println (tetramino-as-str (:active-tetramino state))))
 
+;; TODO: Clean this up a bit
 (defn cells-with-active-tetramino
   [state]
   (let [cells (:cells state)
@@ -159,6 +165,34 @@
   (println (str/join \newline
                      (matrix-repr (cells-with-active-tetramino state)))))
 
+
+(def tetramino-width {:T 3, :T4 2})
+(def tetramino-height {:T 2, :T4 0})
+
+(defn tetramino-in-bounds?
+  [state]
+  (let [{:keys [active-tetramino active-tetramino-col active-tetramino-row]}
+          state]
+    (and (<= 0 active-tetramino-col)
+         (<= (+ active-tetramino-col (tetramino-width active-tetramino)) width)
+         (<= 0 active-tetramino-row)
+         (<= (+ active-tetramino-row (tetramino-height active-tetramino))
+             height))))
+
+(defn move-active-tetramino-left
+  [state]
+  (let [new-loc (update state :active-tetramino-col - 1)]
+    (if (tetramino-in-bounds? new-loc) new-loc state)))
+
+(defn move-active-tetramino-right
+  [state]
+  (let [new-loc (update state :active-tetramino-col + 1)]
+    (if (tetramino-in-bounds? new-loc) new-loc state)))
+
+(defn move-active-tetramino-down
+  [state]
+  (let [new-loc (update state :active-tetramino-row + 1)]
+    (if (tetramino-in-bounds? new-loc) new-loc state)))
 
 (defn step
   [state]
@@ -184,8 +218,12 @@
     ";" (do (println) state)
     ("I" "O" "Z" "S" "J" "L" "T") (set-active-tetranimo state (keyword command))
     ")" (rotate-active-tetranimo-clockwise state)
+    "(" (rotate-active-tetranimo-counterclockwise state)
     "t" (do (print-active-tetramino state) state)
     "P" (do (print-state-with-active-tetramino state) state)
+    "<" (move-active-tetramino-left state)
+    ">" (move-active-tetramino-right state)
+    "v" (move-active-tetramino-down state)
     (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
 
 
