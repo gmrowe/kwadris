@@ -16,16 +16,15 @@
 
 (defn read-input-line [] (read-line))
 
-(defn matrix-repr
+(defn cell-matrix-as-str
   [cells]
   (->> cells
        (partition width)
        (map #(str/join \space %))
-       vec))
+       vec
+       (str/join \newline)))
 
-(defn print-state
-  [state]
-  (println (str/join \newline (matrix-repr (:cells state)))))
+(defn print-state [state] (println (cell-matrix-as-str (:cells state))))
 
 (defn given-state
   [state given-matrix]
@@ -144,26 +143,31 @@
   [state]
   (println (tetramino-as-str (:active-tetramino state))))
 
-;; TODO: Clean this up a bit
-(defn cells-with-active-tetramino
-  [state]
-  (let [cells (:cells state)
-        tetr (-> state
-                 :active-tetramino
-                 tetramino-repr)]
-    (reduce (fn [cs tetr-row]
-              (splice-vec cs
-                          (map #(Character/toUpperCase %) (nth tetr tetr-row))
-                          (+ (:active-tetramino-col state)
-                             (* width
-                                (+ tetr-row (:active-tetramino-row state))))))
-      cells
-      (range (count tetr)))))
+(defn reduce-indexed
+  [f val coll]
+  (second (reduce (fn [[idx val] e] [(inc idx) (f idx val e)]) [0 val] coll)))
+
+(defn splice-active-tetramino
+  [cells tetramino row col]
+  (reduce-indexed (fn [idx cells tetr-row]
+                    (splice-vec cells tetr-row (+ (* width (+ row idx)) col)))
+                  cells
+                  tetramino))
+
+(defn as-active-tetramino-repr
+  [tetramino]
+  (map (fn [row] (map #(Character/toUpperCase %) row)) tetramino))
 
 (defn print-state-with-active-tetramino
   [state]
-  (println (str/join \newline
-                     (matrix-repr (cells-with-active-tetramino state)))))
+  (println (cell-matrix-as-str (splice-active-tetramino
+                                 (:cells state)
+                                 (-> state
+                                     :active-tetramino
+                                     tetramino-repr
+                                     as-active-tetramino-repr)
+                                 (:active-tetramino-row state)
+                                 (:active-tetramino-col state)))))
 
 
 (def tetramino-width {:T 3, :T4 2})
@@ -189,10 +193,32 @@
   (let [new-loc (update state :active-tetramino-col + 1)]
     (if (tetramino-in-bounds? new-loc) new-loc state)))
 
+(defn active-tetramino-at-rest?
+  [state]
+  (= (+ (:active-tetramino-row state)
+        (tetramino-height (:active-tetramino state)))
+     height))
+
 (defn move-active-tetramino-down
   [state]
   (let [new-loc (update state :active-tetramino-row + 1)]
-    (if (tetramino-in-bounds? new-loc) new-loc state)))
+    (cond (not (tetramino-in-bounds? new-loc)) state
+          (active-tetramino-at-rest? new-loc)
+            (assoc new-loc
+              :cells (splice-active-tetramino (:cells new-loc)
+                                              (tetramino-repr (:active-tetramino
+                                                                new-loc))
+                                              (:active-tetramino-row new-loc)
+                                              (:active-tetramino-col new-loc)))
+          :else new-loc)))
+
+(defn find-equal-adjacent-elements
+  [xs]
+  (some (fn [[a b]] (when (= a b) a)) (partition 2 1 xs)))
+
+(defn hard-drop-active-tetramino
+  [state]
+  (find-equal-adjacent-elements (iterate move-active-tetramino-down state)))
 
 (defn step
   [state]
@@ -224,6 +250,7 @@
     "<" (move-active-tetramino-left state)
     ">" (move-active-tetramino-right state)
     "v" (move-active-tetramino-down state)
+    "V" (hard-drop-active-tetramino state)
     (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
 
 
@@ -247,6 +274,12 @@
       (recur (-> state
                  (assoc :input-buffer (parse-command-list input))
                  (assoc :input-pointer 0))))))
+
+(let [commands ["T" "V" "p" "q"]]
+  (-> init-state
+      (execute-command "T")
+      (execute-command "V")
+      :active-tetramino-row))
 
 (defn game-loop
   []
