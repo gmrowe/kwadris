@@ -1,5 +1,6 @@
 (ns kwadris.core
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.pprint :as pp]))
 
 (def width 10)
 
@@ -26,7 +27,7 @@
 
 (defn print-state [state] (println (cell-matrix-as-str (:cells state))))
 
-(defn given-state
+(defn set-cell-matrix
   [state given-matrix]
   (assoc state
     :cells (->> given-matrix
@@ -42,11 +43,6 @@
   [state]
   (printf "%d%n" (:lines-cleared state))
   (flush))
-
-(defn complete?
-  [cells line-index]
-  (not-any? #{\.}
-            (subvec cells (* width line-index) (* width (inc line-index)))))
 
 (defn splice-vec
   [v new-elements start-index]
@@ -70,6 +66,26 @@
       (assoc :active-tetramino-row 0)
       (assoc :active-tetramino-col (tetramino-spawn-col id))))
 
+(defn last-index-of
+  [p xs]
+  (->> xs
+       (keep-indexed (fn [i e] (when (p e) i)))
+       last))
+
+(defn index-of
+  [p xs]
+  (->> xs
+       (keep-indexed (fn [i e] (when (p e) i)))
+       first))
+
+(defn collision-bounds
+  [tetramino-repr]
+  (let [occupied? #(not= % \.)]
+    {:bottom-bounds (mapv #(last-index-of occupied? %)
+                      (apply map vector tetramino-repr)),
+     :left-bounds (mapv #(index-of occupied? %) tetramino-repr),
+     :right-bounds (mapv #(last-index-of occupied? %) tetramino-repr)}))
+
 (def tetramino-repr
   {:L4 [[\o \o \.] [\. \o \.] [\. \o \.]],
    :S4 [[\g \. \.] [\g \g \.] [\. \g \.]],
@@ -85,18 +101,17 @@
    :J2 [[\. \b \b] [\. \b \.] [\. \b \.]],
    :I3 [[\. \. \. \.] [\. \. \. \.] [\c \c \c \c] [\. \. \. \.]],
    :T [[\. \m \.] [\m \m \m] [\. \. \.]],
-   :L3 [[\. \. \.] [\o \o \o] [\o \. \.]],
-   :T4 [[\. \m \.] [\m \m \.] [\. \m \.]],
-   :J3 [[\. \. \.] [\b \b \b] [\. \. \b]],
    :T2 [[\. \m \.] [\. \m \m] [\. \m \.]],
+   :T3 [[\. \. \.] [\m \m \m] [\. \m \.]],
+   :T4 [[\. \m \.] [\m \m \.] [\. \m \.]],
+   :L3 [[\. \. \.] [\o \o \o] [\o \. \.]],
+   :J3 [[\. \. \.] [\b \b \b] [\. \. \b]],
    :L2 [[\. \o \.] [\. \o \.] [\. \o \o]],
    :J4 [[\. \b \.] [\. \b \.] [\b \b \.]],
-   :T3 [[\. \. \.] [\m \m \m] [\. \m \.]],
    :I2 [[\. \. \c \.] [\. \. \c \.] [\. \. \c \.] [\. \. \c \.]],
    :S3 [[\. \. \.] [\. \g \g] [\g \g \.]],
    :S [[\. \g \g] [\g \g \.] [\. \. \.]],
    :Z4 [[\. \r \.] [\r \r \.] [\r \. \.]]})
-
 
 (defn tetramino-as-str
   [id]
@@ -137,7 +152,7 @@
 
 (defn rotate-active-tetranimo-counterclockwise
   [state]
-  (nth (iterate #(update % :active-tetramino tetranamo-rotations) state) 3))
+  (nth (iterate rotate-active-tetranimo-clockwise state) 3))
 
 (defn print-active-tetramino
   [state]
@@ -169,18 +184,17 @@
                                  (:active-tetramino-row state)
                                  (:active-tetramino-col state)))))
 
-
-(def tetramino-width {:T 3, :T4 2})
-(def tetramino-height {:T 2, :T4 0})
-
 (defn tetramino-in-bounds?
   [state]
   (let [{:keys [active-tetramino active-tetramino-col active-tetramino-row]}
-          state]
-    (and (<= 0 active-tetramino-col)
-         (<= (+ active-tetramino-col (tetramino-width active-tetramino)) width)
+          state
+        {:keys [bottom-bounds left-bounds right-bounds]}
+          (collision-bounds (tetramino-repr active-tetramino))]
+    (and (<= 0 (+ active-tetramino-col (apply min (filter some? left-bounds))))
+         (< (+ active-tetramino-col (apply max (filter some? right-bounds)))
+            width)
          (<= 0 active-tetramino-row)
-         (<= (+ active-tetramino-row (tetramino-height active-tetramino))
+         (<= (+ active-tetramino-row (apply max (filter some? bottom-bounds)))
              height))))
 
 (defn move-active-tetramino-left
@@ -195,21 +209,30 @@
 
 (defn active-tetramino-at-rest?
   [state]
-  (= (+ (:active-tetramino-row state)
-        (tetramino-height (:active-tetramino state)))
-     height))
+  (let [{:keys [active-tetramino active-tetramino-row]} state]
+    (= (+ active-tetramino-row
+          (apply max
+            (->> active-tetramino
+                 tetramino-repr
+                 collision-bounds
+                 :bottom-bounds
+                 (filter some?))))
+       height)))
+
+(defn add-active-tetramino-to-matrix
+  [state]
+  (assoc state
+    :cells (splice-active-tetramino (:cells state)
+                                    (tetramino-repr (:active-tetramino state))
+                                    (:active-tetramino-row state)
+                                    (:active-tetramino-col state))))
 
 (defn move-active-tetramino-down
   [state]
   (let [new-loc (update state :active-tetramino-row + 1)]
     (cond (not (tetramino-in-bounds? new-loc)) state
-          (active-tetramino-at-rest? new-loc)
-            (assoc new-loc
-              :cells (splice-active-tetramino (:cells new-loc)
-                                              (tetramino-repr (:active-tetramino
-                                                                new-loc))
-                                              (:active-tetramino-row new-loc)
-                                              (:active-tetramino-col new-loc)))
+          (active-tetramino-at-rest? new-loc) (add-active-tetramino-to-matrix
+                                                state)
           :else new-loc)))
 
 (defn find-equal-adjacent-elements
@@ -220,9 +243,14 @@
   [state]
   (find-equal-adjacent-elements (iterate move-active-tetramino-down state)))
 
+(defn complete-line?
+  [cells line-index]
+  (not-any? #{\.}
+            (subvec cells (* width line-index) (* width (inc line-index)))))
+
 (defn step
   [state]
-  (let [complete-line-indexes (filter #(complete? (:cells state) %)
+  (let [complete-line-indexes (filter #(complete-line? (:cells state) %)
                                 (range height))]
     (-> state
         (update :cells #(reduce clear-line % complete-line-indexes))
@@ -231,12 +259,14 @@
 
 (defn quit [state] (assoc state :quit true))
 
+(defn dump-internal-state [state] (pp/pprint (dissoc state :cells)))
+
 (defn execute-command
   [state command]
   (case command
     "q" (quit state)
     "p" (do (print-state state) state)
-    "g" (given-state state (repeatedly height read-input-line))
+    "g" (set-cell-matrix state (repeatedly height read-input-line))
     "c" (clear-state state)
     "?s" (do (print-score state) state)
     "?n" (do (print-lines-cleared state) state)
@@ -251,8 +281,8 @@
     ">" (move-active-tetramino-right state)
     "v" (move-active-tetramino-down state)
     "V" (hard-drop-active-tetramino state)
+    "D" (do (dump-internal-state state) state)
     (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
-
 
 (defn parse-command-list
   [s]
@@ -274,12 +304,6 @@
       (recur (-> state
                  (assoc :input-buffer (parse-command-list input))
                  (assoc :input-pointer 0))))))
-
-(let [commands ["T" "V" "p" "q"]]
-  (-> init-state
-      (execute-command "T")
-      (execute-command "V")
-      :active-tetramino-row))
 
 (defn game-loop
   []
