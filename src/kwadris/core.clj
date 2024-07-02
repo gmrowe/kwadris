@@ -47,7 +47,7 @@
 (defn splice-vec
   [v new-elements start-index]
   (reduce (fn [v0 [i e]]
-            (if (< (+ i start-index) (count v0))
+            (if (and (<= 0 (+ i start-index)) (< (+ i start-index) (count v0)))
               (assoc v0 (+ i start-index) e)
               v0))
     v
