@@ -221,17 +221,34 @@
   (let [new-loc (update state :active-tetramino-col + 1)]
     (if (tetramino-in-bounds? new-loc) new-loc state)))
 
+(defn tetramino-at-bottom?
+  [state]
+  (let [{:keys [active-tetramino active-tetramino-row]} state
+        {:keys [bottom-bounds]} (->> active-tetramino
+                                     tetramino-repr
+                                     collision-bounds)]
+    (= (+ active-tetramino-row (apply max (filter some? bottom-bounds)))
+       height)))
+
+(defn tetramino-blocked?
+  [state]
+  (let [{:keys [active-tetramino active-tetramino-row active-tetramino-col
+                cells]}
+          state
+        {:keys [bottom-bounds]} (->> active-tetramino
+                                     tetramino-repr
+                                     collision-bounds)]
+    (some (fn [[i b]]
+            (when b
+              (not= \.
+                    (nth cells
+                         (+ (* width (+ active-tetramino-row b))
+                            (+ i active-tetramino-col))))))
+          (map-indexed vector bottom-bounds))))
+
 (defn active-tetramino-at-rest?
   [state]
-  (let [{:keys [active-tetramino active-tetramino-row]} state]
-    (= (+ active-tetramino-row
-          (apply max
-            (->> active-tetramino
-                 tetramino-repr
-                 collision-bounds
-                 :bottom-bounds
-                 (filter some?))))
-       height)))
+  (or (tetramino-at-bottom? state) (tetramino-blocked? state)))
 
 (defn add-active-tetramino-to-matrix
   [state]
