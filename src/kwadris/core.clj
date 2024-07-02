@@ -44,6 +44,20 @@
   (printf "%d%n" (:lines-cleared state))
   (flush))
 
+(defn reduce-indexed
+  [f val coll]
+  (second (reduce (fn [[idx val] e] [(inc idx) (f idx val e)]) [0 val] coll)))
+
+(defn conditional-merge-vec-elements
+  [v1 v2 p start-index]
+  (reduce-indexed
+    (fn [i v e]
+      (if (and (p e) (<= 0 (+ i start-index)) (< (+ i start-index) (count v)))
+        (assoc v (+ i start-index) e)
+        v))
+    v1
+    v2))
+
 (defn splice-vec
   [v new-elements start-index]
   (reduce (fn [v0 [i e]]
@@ -158,14 +172,14 @@
   [state]
   (println (tetramino-as-str (:active-tetramino state))))
 
-(defn reduce-indexed
-  [f val coll]
-  (second (reduce (fn [[idx val] e] [(inc idx) (f idx val e)]) [0 val] coll)))
-
 (defn splice-active-tetramino
   [cells tetramino row col]
   (reduce-indexed (fn [idx cells tetr-row]
-                    (splice-vec cells tetr-row (+ (* width (+ row idx)) col)))
+                    (conditional-merge-vec-elements cells
+                                                    tetr-row
+                                                    #(not= % \.)
+                                                    (+ (* width (+ row idx))
+                                                       col)))
                   cells
                   tetramino))
 
