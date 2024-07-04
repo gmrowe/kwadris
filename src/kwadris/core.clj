@@ -29,22 +29,23 @@
        (str/join \newline)))
 
 
-(defn title-msg
-  [_state]
+(def title-msg
   (str/join \newline
             ["Learntris (c) 1992 Tetraminex, Inc."
              "Press start button to begin."]))
 
-(defn pause-msg
-  [_state]
-  (str/join \newline ["Paused" "Press start button to continue."]))
+(def pause-msg (str/join \newline ["Paused" "Press start button to continue."]))
+
+(def game-over-msg "Game Over")
 
 (defn print-state
   [state]
   (case (:game-mode state)
     :in-game (println (cell-matrix-as-str (:cells state)))
-    :paused (println (pause-msg state))
-    :title-screen (println (title-msg state))))
+    :paused (println pause-msg)
+    :title-screen (println title-msg)
+    :game-over (do (println (cell-matrix-as-str (:cells state)))
+                   (println game-over-msg))))
 
 (defn set-cell-matrix
   [state given-matrix]
@@ -208,14 +209,16 @@
 
 (defn print-state-with-active-tetramino
   [state]
-  (do (println (cell-matrix-as-str (splice-active-tetramino
-                                     (:cells state)
-                                     (-> state
-                                         :active-tetramino
-                                         tetramino-repr
-                                         as-active-tetramino-repr)
-                                     (:active-tetramino-row state)
-                                     (:active-tetramino-col state))))))
+  (if (= :game-over (:game-mode state))
+    (print-state state)
+    (println (cell-matrix-as-str (splice-active-tetramino
+                                   (:cells state)
+                                   (-> state
+                                       :active-tetramino
+                                       tetramino-repr
+                                       as-active-tetramino-repr)
+                                   (:active-tetramino-row state)
+                                   (:active-tetramino-col state))))))
 
 (defn tetramino-in-bounds?
   [state]
@@ -319,6 +322,11 @@
   [state]
   (let [new-loc (update state :active-tetramino-row + 1)]
     (cond (not (tetramino-in-bounds? new-loc)) state
+          (and (active-tetramino-blocked-below? new-loc)
+               (zero? (:active-tetramino-row state)))
+            (-> state
+                (assoc :game-mode :game-over)
+                (add-active-tetramino-to-matrix))
           (active-tetramino-at-rest? new-loc) (add-active-tetramino-to-matrix
                                                 state)
           :else new-loc)))
