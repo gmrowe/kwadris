@@ -13,7 +13,8 @@
    :score 0,
    :lines-cleared 0,
    :input-pointer 0,
-   :input-buffer []})
+   :input-buffer [],
+   :game-mode :in-game})
 
 (defn cell-at [state row col] (get-in state [:cells (+ (* width row) col)]))
 
@@ -27,7 +28,23 @@
        vec
        (str/join \newline)))
 
-(defn print-state [state] (println (cell-matrix-as-str (:cells state))))
+
+(defn title-msg
+  [_state]
+  (str/join \newline
+            ["Learntris (c) 1992 Tetraminex, Inc."
+             "Press start button to begin."]))
+
+(defn pause-msg
+  [_state]
+  (str/join \newline ["Paused" "Press start button to continue."]))
+
+(defn print-state
+  [state]
+  (case (:game-mode state)
+    :in-game (println (cell-matrix-as-str (:cells state)))
+    :paused (println (pause-msg state))
+    :title-screen (println (title-msg state))))
 
 (defn set-cell-matrix
   [state given-matrix]
@@ -236,11 +253,29 @@
       new-loc
       state)))
 
+(defn active-tetramino-blocked-right?
+  [state]
+  (let [{:keys [active-tetramino active-tetramino-row active-tetramino-col]}
+          state
+        {:keys [right-bounds]} (->> active-tetramino
+                                    tetramino-repr
+                                    collision-bounds)]
+    (some (fn [[i b]]
+            (when b
+              (not= \.
+                    (cell-at state
+                             (+ active-tetramino-row i)
+                             (+ active-tetramino-col b)))))
+          (map-indexed vector right-bounds))))
+
 
 (defn move-active-tetramino-right
   [state]
   (let [new-loc (update state :active-tetramino-col + 1)]
-    (if (tetramino-in-bounds? new-loc) new-loc state)))
+    (if (and (tetramino-in-bounds? new-loc)
+             (not (active-tetramino-blocked-right? new-loc)))
+      new-loc
+      state)))
 
 (defn active-tetramino-at-bottom?
   [state]
@@ -310,6 +345,7 @@
         (update :lines-cleared + (count complete-line-indexes))
         (update :score + (* 100 (count complete-line-indexes))))))
 
+
 (defn quit [state] (assoc state :quit true))
 
 (defn dump-internal-state [state] (pp/pprint (dissoc state :cells)))
@@ -334,6 +370,10 @@
     ">" (move-active-tetramino-right state)
     "v" (move-active-tetramino-down state)
     "V" (hard-drop-active-tetramino state)
+    "@" (assoc state :game-mode :title-screen)
+    "!" (update state
+                :game-mode
+                {:in-game :paused, :paused :in-game, :title-screen :in-game})
     "D" (do (dump-internal-state state) state)
     (do (printf "[Error] Unknown command: %s%n" command) (flush) state)))
 
