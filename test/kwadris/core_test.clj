@@ -28,7 +28,7 @@
 . . . . . . . . . .
 . . . . . . . . . .
 . . . . . . . . . .\n"
-        (c/output-matrix-as-str c/init-state))))
+        (with-out-str (c/print-state c/init-state)))))
   (testing "A `p` command prints the matrix to sdtout"
     (is
       (=

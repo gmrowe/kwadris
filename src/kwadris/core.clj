@@ -15,6 +15,8 @@
    :input-pointer 0,
    :input-buffer []})
 
+(defn cell-at [state row col] (get-in state [:cells (+ (* width row) col)]))
+
 (defn read-input-line [] (read-line))
 
 (defn cell-matrix-as-str
@@ -189,14 +191,14 @@
 
 (defn print-state-with-active-tetramino
   [state]
-  (println (cell-matrix-as-str (splice-active-tetramino
-                                 (:cells state)
-                                 (-> state
-                                     :active-tetramino
-                                     tetramino-repr
-                                     as-active-tetramino-repr)
-                                 (:active-tetramino-row state)
-                                 (:active-tetramino-col state)))))
+  (do (println (cell-matrix-as-str (splice-active-tetramino
+                                     (:cells state)
+                                     (-> state
+                                         :active-tetramino
+                                         tetramino-repr
+                                         as-active-tetramino-repr)
+                                     (:active-tetramino-row state)
+                                     (:active-tetramino-col state))))))
 
 (defn tetramino-in-bounds?
   [state]
@@ -211,17 +213,36 @@
          (<= (+ active-tetramino-row (apply max (filter some? bottom-bounds)))
              height))))
 
+(defn active-tetramino-blocked-left?
+  [state]
+  (let [{:keys [active-tetramino active-tetramino-row active-tetramino-col]}
+          state
+        {:keys [left-bounds]} (->> active-tetramino
+                                   tetramino-repr
+                                   collision-bounds)]
+    (some (fn [[i b]]
+            (when b
+              (not= \.
+                    (cell-at state
+                             (+ active-tetramino-row i)
+                             (+ active-tetramino-col b)))))
+          (map-indexed vector left-bounds))))
+
 (defn move-active-tetramino-left
   [state]
   (let [new-loc (update state :active-tetramino-col - 1)]
-    (if (tetramino-in-bounds? new-loc) new-loc state)))
+    (if (and (tetramino-in-bounds? new-loc)
+             (not (active-tetramino-blocked-left? new-loc)))
+      new-loc
+      state)))
+
 
 (defn move-active-tetramino-right
   [state]
   (let [new-loc (update state :active-tetramino-col + 1)]
     (if (tetramino-in-bounds? new-loc) new-loc state)))
 
-(defn tetramino-at-bottom?
+(defn active-tetramino-at-bottom?
   [state]
   (let [{:keys [active-tetramino active-tetramino-row]} state
         {:keys [bottom-bounds]} (->> active-tetramino
@@ -230,7 +251,7 @@
     (= (+ active-tetramino-row (apply max (filter some? bottom-bounds)))
        height)))
 
-(defn tetramino-blocked?
+(defn active-tetramino-blocked-below?
   [state]
   (let [{:keys [active-tetramino active-tetramino-row active-tetramino-col
                 cells]}
@@ -241,14 +262,15 @@
     (some (fn [[i b]]
             (when b
               (not= \.
-                    (nth cells
-                         (+ (* width (+ active-tetramino-row b))
-                            (+ i active-tetramino-col))))))
+                    (cell-at state
+                             (+ active-tetramino-row b)
+                             (+ active-tetramino-col i)))))
           (map-indexed vector bottom-bounds))))
 
 (defn active-tetramino-at-rest?
   [state]
-  (or (tetramino-at-bottom? state) (tetramino-blocked? state)))
+  (or (active-tetramino-at-bottom? state)
+      (active-tetramino-blocked-below? state)))
 
 (defn add-active-tetramino-to-matrix
   [state]
@@ -337,10 +359,10 @@
                  (assoc :input-pointer 0))))))
 
 (defn game-loop
-  []
-  (loop [state init-state]
+  [state]
+  (loop [state state]
     (when-not (:quit state)
       (when-let [[command state] (next-command state)]
         (recur (execute-command state command))))))
 
-(defn run [_opts] (game-loop))
+(defn run [opts] (game-loop (merge init-state opts)))
